@@ -44,7 +44,7 @@ func main() {
 }
 
 const testLogPath = "logs/ci-kubernetes-e2e-gce-scale-performance/290/artifacts/gce-scale-cluster-master/kube-apiserver-audit.log-20190102-1546444805.gz"
-const testTargetSubstring = "FrequentKubeletRestart"
+const testTargetSubstring = "\"auditID\":\"07ff64df-fcfe-4cdc-83a5-0c6a09237698\""
 
 func setupFromConsole() (string, string) {
 	var logPath, targetSubstring string
