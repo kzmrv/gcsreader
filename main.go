@@ -21,6 +21,11 @@ import (
 
 const bucketName = "kubernetes-jenkins"
 
+type logEntry struct {
+	log  string
+	time string
+}
+
 // TODO #1 Setup pgzip
 // TODO #2 Make line processing parallel, optimize it
 // TODO #3 Split code in different files
@@ -63,11 +68,11 @@ func setupFromConsole() (string, string) {
 	return logPath, targetSubstring
 }
 
-func processLines(rd *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
+func processLines(reader *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	var result []*logEntry
 	defer timeTrack(time.Now(), "filtering and parsing")
 	for {
-		line, err := rd.ReadBytes('\n')
+		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -89,11 +94,6 @@ func processLine(line []byte, regex *regexp.Regexp) (bool, *logEntry, error) {
 
 	parsed, err := parseLine(string(line))
 	return true, parsed, err
-}
-
-type logEntry struct {
-	log  string
-	time string
 }
 
 // TODO Parse as bytes if needed
