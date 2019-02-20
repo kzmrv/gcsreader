@@ -35,7 +35,8 @@ func main() {
 	logPath, targetSubstring := setupFromConsole()
 	regex, _ := regexp.Compile(targetSubstring)
 
-	bytess := downloadAndDecompress(logPath)
+	r, err := downloadAndDecompress(logPath)
+	bytess, err := ioutil.ReadAll(r)
 	reader := bufio.NewReader(bytes.NewReader(bytess))
 	parsed, _ := processLines(reader, regex)
 
@@ -120,22 +121,22 @@ func (e *parseLineFailedError) Error() string {
 	return "Failed to parse line: " + e.line
 }
 
-func downloadAndDecompress(objectPath string) []byte {
+func downloadAndDecompress(objectPath string) (*gzip.Reader, error) {
 	bts, err := download(objectPath)
 	handle(err)
 
 	decompressed, err := decompress(bts)
 	handle(err)
-	return decompressed
+	return decompressed, nil
 }
 
-func decompress(bts []byte) ([]byte, error) {
+func decompress(bts []byte) (*gzip.Reader, error) {
 	defer timeTrack(time.Now(), "decompress")
 	reader, err := gzip.NewReader(bytes.NewReader(bts))
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(reader)
+	return reader, nil
 }
 
 func download(objectPath string) ([]byte, error) {
