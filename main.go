@@ -37,8 +37,8 @@ func main() {
 	regex, _ := regexp.Compile(targetSubstring)
 
 	r, err := downloadAndDecompress(logPath)
-	bytess, err := ioutil.ReadAll(r)
-	reader := bufio.NewReader(bytes.NewReader(bytess))
+	handle(err)
+	reader := bufio.NewReader(r)
 	parsed, _ := processLines(reader, regex)
 
 	if len(parsed) == 0 {
@@ -178,8 +178,9 @@ const testFilePath = "c:\\temp\\kube-apiserver.log"
 
 func testDownloadToLocalFile() {
 	path := testLogPath
-	bytess := downloadAndDecompress(path)
-	err := ioutil.WriteFile(testFilePath, bytess, 0644)
+	r, err := downloadAndDecompress(path)
+	bytess, err := ioutil.ReadAll(r)
+	err = ioutil.WriteFile(testFilePath, bytess, 0644)
 	handle(err)
 }
 
