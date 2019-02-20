@@ -32,6 +32,7 @@ type logEntry struct {
 // TODO #4 Convert manual test methods below into automated tests
 
 func main() {
+	defer timeTrack(time.Now(), "total run")
 	logPath, targetSubstring := setupFromConsole()
 	regex, _ := regexp.Compile(targetSubstring)
 
