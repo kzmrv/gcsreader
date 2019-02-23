@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"compress/gzip"
+	//"compress/gzip"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	gzip "github.com/klauspost/pgzip"
 	//gzip "github.com/klauspost/pgzip"
 )
 

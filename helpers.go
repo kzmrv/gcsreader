@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"io"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	gzip "github.com/klauspost/pgzip"
 	"google.golang.org/api/option"
 )
 
