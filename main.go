@@ -98,11 +98,15 @@ func parseLine(line string) (*logEntry, error) {
 }
 
 func downloadAndDecompress(objectPath string) (*gzip.Reader, error) {
-	bts, err := download(objectPath)
-	handle(err)
+	reader, err := download(objectPath)
+	if err != nil {
+		return nil, err
+	}
 
-	decompressed, err := decompress(bts)
-	handle(err)
+	decompressed, err := decompress(reader)
+	if err != nil {
+		return nil, err
+	}
 	return decompressed, nil
 }
 

@@ -20,29 +20,30 @@ func timeTrack(start time.Time, name string) {
 	log.Printf("%s took %s", name, elapsed)
 }
 
-func download(objectPath string) ([]byte, error) {
+func download(objectPath string) (*storage.Reader, error) {
 	context := context.Background()
 	client, err := storage.NewClient(context, option.WithoutAuthentication())
-	handle(err)
+	if err != nil {
+		return nil, err
+	}
 
 	bucket := client.Bucket(bucketName)
 
 	remoteFile := bucket.Object(objectPath).ReadCompressed(true)
 	reader, err := remoteFile.NewReader(context)
-	handle(err)
-
-	defer timeTrack(time.Now(), "download")
-	localBytes, err := ioutil.ReadAll(reader)
-	return localBytes, err
-}
-
-func decompress(bts []byte) (*gzip.Reader, error) {
-	defer timeTrack(time.Now(), "decompress")
-	reader, err := gzip.NewReader(bytes.NewReader(bts))
 	if err != nil {
 		return nil, err
 	}
-	return reader, nil
+
+	return reader, err
+}
+
+func decompress(reader *storage.Reader) (*gzip.Reader, error) {
+	newReader, err := gzip.NewReader(reader)
+	if err != nil {
+		return nil, err
+	}
+	return newReader, nil
 }
 
 func handle(err error) {
@@ -50,6 +51,27 @@ func handle(err error) {
 		return
 	}
 	log.Panic(err)
+}
+
+// For benchmarking purposes
+func downloadFull(objectPath string) ([]byte, error) {
+	context := context.Background()
+	client, err := storage.NewClient(context, option.WithoutAuthentication())
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := client.Bucket(bucketName)
+
+	remoteFile := bucket.Object(objectPath).ReadCompressed(true)
+	reader, err := remoteFile.NewReader(context)
+	if err != nil {
+		return nil, err
+	}
+
+	defer timeTrack(time.Now(), "download")
+	localBytes, err := ioutil.ReadAll(reader)
+	return localBytes, err
 }
 
 func readFromLocalFile(filename string) io.Reader {
