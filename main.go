@@ -11,13 +11,12 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	gzip "github.com/klauspost/pgzip"
 	//gzip "github.com/klauspost/pgzip"
 )
 
 func main() {
 	defer timeTrack(time.Now(), "total run")
+	defer durations.printAll()
 	logPath, targetSubstring := setupFromConsole()
 	regex, _ := regexp.Compile(targetSubstring)
 
@@ -57,7 +56,6 @@ func setupFromConsole() (string, string) {
 
 func processLines(reader *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	var result []*logEntry
-	defer timeTrack(time.Now(), "filtering and parsing")
 	for {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
@@ -99,7 +97,7 @@ func parseLine(line string) (*logEntry, error) {
 	return &logEntry{log: line, time: timestamp}, nil
 }
 
-func downloadAndDecompress(objectPath string) (*gzip.Reader, error) {
+func downloadAndDecompress(objectPath string) (io.Reader, error) {
 	reader, err := download(objectPath)
 	if err != nil {
 		return nil, err

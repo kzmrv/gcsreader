@@ -15,12 +15,7 @@ import (
 
 const bucketName = "kubernetes-jenkins"
 
-func timeTrack(start time.Time, name string) {
-	elapsed := time.Since(start)
-	log.Printf("%s took %s", name, elapsed)
-}
-
-func download(objectPath string) (*storage.Reader, error) {
+func download(objectPath string) (io.Reader, error) {
 	context := context.Background()
 	client, err := storage.NewClient(context, option.WithoutAuthentication())
 	if err != nil {
@@ -35,15 +30,15 @@ func download(objectPath string) (*storage.Reader, error) {
 		return nil, err
 	}
 
-	return reader, err
+	return newTrackingReader(reader, "download"), err
 }
 
-func decompress(reader *storage.Reader) (*gzip.Reader, error) {
+func decompress(reader io.Reader) (io.Reader, error) {
 	newReader, err := gzip.NewReader(reader)
 	if err != nil {
 		return nil, err
 	}
-	return newReader, nil
+	return newTrackingReader(newReader, "decompress"), nil
 }
 
 func handle(err error) {
@@ -53,7 +48,6 @@ func handle(err error) {
 	log.Panic(err)
 }
 
-// For benchmarking purposes
 func downloadFull(objectPath string) ([]byte, error) {
 	context := context.Background()
 	client, err := storage.NewClient(context, option.WithoutAuthentication())
