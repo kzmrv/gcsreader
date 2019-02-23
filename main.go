@@ -2,9 +2,7 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"compress/gzip"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,23 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"cloud.google.com/go/storage"
-	"google.golang.org/api/option"
 	//gzip "github.com/klauspost/pgzip"
 )
-
-const bucketName = "kubernetes-jenkins"
-
-type logEntry struct {
-	log  string
-	time string
-}
-
-// TODO #1 Setup pgzip
-// TODO #2 Make line processing parallel, optimize it
-// TODO #3 Split code in different files
-// TODO #4 Convert manual test methods below into automated tests
 
 func main() {
 	defer timeTrack(time.Now(), "total run")
@@ -114,14 +97,6 @@ func parseLine(line string) (*logEntry, error) {
 	return &logEntry{log: line, time: timestamp}, nil
 }
 
-type parseLineFailedError struct {
-	line string
-}
-
-func (e *parseLineFailedError) Error() string {
-	return "Failed to parse line: " + e.line
-}
-
 func downloadAndDecompress(objectPath string) (*gzip.Reader, error) {
 	bts, err := download(objectPath)
 	handle(err)
@@ -129,49 +104,6 @@ func downloadAndDecompress(objectPath string) (*gzip.Reader, error) {
 	decompressed, err := decompress(bts)
 	handle(err)
 	return decompressed, nil
-}
-
-func decompress(bts []byte) (*gzip.Reader, error) {
-	defer timeTrack(time.Now(), "decompress")
-	reader, err := gzip.NewReader(bytes.NewReader(bts))
-	if err != nil {
-		return nil, err
-	}
-	return reader, nil
-}
-
-func download(objectPath string) ([]byte, error) {
-	context := context.Background()
-	client, err := storage.NewClient(context, option.WithoutAuthentication())
-	handle(err)
-
-	bucket := client.Bucket(bucketName)
-
-	remoteFile := bucket.Object(objectPath).ReadCompressed(true)
-	reader, err := remoteFile.NewReader(context)
-	handle(err)
-
-	defer timeTrack(time.Now(), "download")
-	localBytes, err := ioutil.ReadAll(reader)
-	return localBytes, err
-}
-
-func timeTrack(start time.Time, name string) {
-	elapsed := time.Since(start)
-	log.Printf("%s took %s", name, elapsed)
-}
-
-func handle(err error) {
-	if err == nil {
-		return
-	}
-	log.Panic(err)
-}
-
-func readFromLocalFile(filename string) io.Reader {
-	bts, err := ioutil.ReadFile(filename)
-	handle(err)
-	return bytes.NewReader(bts)
 }
 
 const testFilePath = "c:\\temp\\kube-apiserver.log"
@@ -189,4 +121,17 @@ func testParsingOnLocalFile() {
 	reader := bufio.NewReader(readFromLocalFile(testFilePath))
 	parsed, _ := processLines(reader, regex)
 	log.Println(parsed)
+}
+
+func (e *parseLineFailedError) Error() string {
+	return "Failed to parse line: " + e.line
+}
+
+type parseLineFailedError struct {
+	line string
+}
+
+type logEntry struct {
+	log  string
+	time string
 }
