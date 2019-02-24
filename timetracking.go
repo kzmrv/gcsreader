@@ -8,6 +8,7 @@ import (
 )
 
 var durations = newDurationMap()
+var trackDurations = false
 
 type trackingReader struct {
 	inner io.Reader
@@ -27,11 +28,18 @@ func (reader *trackingReader) Read(bts []byte) (int, error) {
 }
 
 func timeTrack(start time.Time, name string) {
+	if !trackDurations {
+		return
+	}
 	elapsed := time.Since(start)
 	log.Printf("%s took %s", name, elapsed)
 }
 
 func timeTrackIncremental(start time.Time, name string) {
+	if !trackDurations {
+		return
+	}
+
 	elapsed := time.Since(start)
 	durations.increase(name, elapsed)
 }
