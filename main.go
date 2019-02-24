@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -56,6 +54,7 @@ func processLines(reader *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, erro
 	var result []*logEntry
 	for {
 		line, err := reader.ReadBytes('\n')
+		time := time.Now()
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -66,6 +65,7 @@ func processLines(reader *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, erro
 		if isMatched && err == nil {
 			result = append(result, entry)
 		}
+		timeTrackIncremental(time, "parsing")
 	}
 	return result, nil
 }
@@ -105,23 +105,6 @@ func downloadAndDecompress(objectPath string) (io.Reader, error) {
 		return nil, err
 	}
 	return decompressed, nil
-}
-
-const testFilePath = "c:\\temp\\kube-apiserver.log"
-
-func testDownloadToLocalFile() {
-	path := testLogPath
-	r, err := downloadAndDecompress(path)
-	bytess, err := ioutil.ReadAll(r)
-	err = ioutil.WriteFile(testFilePath, bytess, 0644)
-	handle(err)
-}
-
-func testParsingOnLocalFile() {
-	regex, _ := regexp.Compile(testTargetSubstring)
-	reader := bufio.NewReader(readFromLocalFile(testFilePath))
-	parsed, _ := processLines(reader, regex)
-	log.Println(parsed)
 }
 
 func (e *parseLineFailedError) Error() string {
