@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"io"
 	"log"
 	"sync"
@@ -22,9 +21,6 @@ func newTrackingReader(reader io.Reader, name string) io.Reader {
 }
 
 func (reader *trackingReader) Read(bts []byte) (int, error) {
-	if reader.inner == nil {
-		return 0, errors.New("Need to initialize with reader")
-	}
 	defer timeTrackIncremental(time.Now(), reader.name)
 	n, err := reader.inner.Read(bts)
 	return n, err

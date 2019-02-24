@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	gzip "github.com/klauspost/pgzip"
 	"google.golang.org/api/option"
+
+	gzip "github.com/klauspost/pgzip"
 )
 
 const bucketName = "kubernetes-jenkins"

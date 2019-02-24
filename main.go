@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	//"compress/gzip"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	//gzip "github.com/klauspost/pgzip"
 )
 
 func main() {
@@ -81,7 +79,6 @@ func processLine(line []byte, regex *regexp.Regexp) (bool, *logEntry, error) {
 	return true, parsed, err
 }
 
-// TODO Parse as bytes if needed
 func parseLine(line string) (*logEntry, error) {
 	const startMarker = "ReceivedTimestamp\":\""
 	const endMarker = "\",\"stageTimestamp"
