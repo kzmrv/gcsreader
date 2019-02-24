@@ -28,7 +28,7 @@ func download(objectPath string) (io.Reader, error) {
 		return nil, err
 	}
 
-	return newTrackingReader(reader, "download"), err
+	return reader, err
 }
 
 func decompress(reader io.Reader) (io.Reader, error) {

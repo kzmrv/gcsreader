@@ -13,13 +13,16 @@ import (
 func main() {
 	defer timeTrack(time.Now(), "total run")
 	defer durations.printAll()
+	run()
+}
+
+func run() {
 	logPath, targetSubstring := setupFromConsole()
 	regex, _ := regexp.Compile(targetSubstring)
 
 	r, err := downloadAndDecompress(logPath)
 	handle(err)
-	reader := bufio.NewReader(r)
-	parsed, _ := processLines(reader, regex)
+	parsed, _ := processLines(r, regex)
 
 	if len(parsed) == 0 {
 		fmt.Printf("No lines found")
@@ -50,10 +53,11 @@ func setupFromConsole() (string, string) {
 	return logPath, targetSubstring
 }
 
-func processLines(reader *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
+func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	var result []*logEntry
 	for {
-		line, err := reader.ReadBytes('\n')
+		r := bufio.NewReader(reader)
+		line, err := r.ReadBytes('\n')
 		time := time.Now()
 		if err != nil {
 			if err == io.EOF {
@@ -62,6 +66,9 @@ func processLines(reader *bufio.Reader, regex *regexp.Regexp) ([]*logEntry, erro
 			return nil, err
 		}
 		isMatched, entry, err := processLine(line, regex)
+		if err != nil {
+			fmt.Println(err, line) // TODO There is a problem that files finish with incompleted line
+		}
 		if isMatched && err == nil {
 			result = append(result, entry)
 		}
