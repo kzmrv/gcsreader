@@ -3,17 +3,19 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"io"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"time"
-
-	"cloud.google.com/go/storage"
-	"google.golang.org/api/option"
 )
 
+// These methods are only meant to be used for local machine benchmarking, so they may be poor optimized or violate good style
 const testFilePath = "c:\\temp\\kube-apiserver.log"
+
+func setupForLocal() {
+	downloadToFiles()
+}
 
 // We assume read from file is fast - according to 'testRead' it takes ~1s on uncompressed file
 func runBenchmarks() {
@@ -54,30 +56,21 @@ func testFileRead() {
 	io.Copy(ioutil.Discard, r)
 }
 
-func saveCompressed() {
-	bts, err := downloadFull(testLogPath)
+func downloadToFiles() {
+	reader, err := download(testLogPath)
 	handle(err)
-	err = ioutil.WriteFile(testFilePath+".gz", bts, 0644)
-}
+	bts, err := ioutil.ReadAll(reader)
+	handle(err)
 
-func downloadFull(objectPath string) ([]byte, error) {
-	context := context.Background()
-	client, err := storage.NewClient(context, option.WithoutAuthentication())
-	if err != nil {
-		return nil, err
-	}
+	ioutil.WriteFile(testFilePath+".gz", bts, 0644)
+	handle(err)
 
-	defer timeTrack(time.Now(), "download")
-	bucket := client.Bucket(bucketName)
-
-	remoteFile := bucket.Object(objectPath).ReadCompressed(true)
-	reader, err := remoteFile.NewReader(context)
-	if err != nil {
-		return nil, err
-	}
-
-	localBytes, err := ioutil.ReadAll(reader)
-	return localBytes, err
+	r, err := decompress(bytes.NewReader(bts))
+	handle(err)
+	fullFile, err := os.OpenFile(testFilePath, os.O_RDWR|os.O_CREATE, 0644)
+	handle(err)
+	_, err = io.Copy(fullFile, r)
+	handle(err)
 }
 
 func readFromLocalFile(filename string) io.Reader {
