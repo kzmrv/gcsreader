@@ -6,26 +6,26 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/kubernetes/klog"
 )
 
 func main() {
-	defer timeTrack(time.Now(), "total run")
-	defer durations.printAll()
 	run()
 }
 
 func run() {
 	logPath, targetSubstring := setupFromConsole()
-	regex, _ := regexp.Compile(targetSubstring)
+	regex := regexp.MustCompile(targetSubstring)
 
 	r, err := downloadAndDecompress(logPath)
 	if err != nil {
 		klog.Fatal(err)
 	}
-	parsed, _ := processLines(r, regex)
+	parsed, err := processLines(r, regex)
+	if err != nil {
+		klog.Fatal(err)
+	}
 
 	if len(parsed) == 0 {
 		klog.Info("No lines found")
@@ -61,7 +61,6 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	for {
 		r := bufio.NewReader(reader)
 		line, err := r.ReadBytes('\n')
-		time := time.Now()
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -75,7 +74,6 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 		if isMatched && err == nil {
 			result = append(result, entry)
 		}
-		timeTrackIncremental(time, "parsing")
 	}
 	return result, nil
 }

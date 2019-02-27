@@ -35,5 +35,5 @@ func decompress(reader io.Reader) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newTrackingReader(newReader, "decompress"), nil
+	return newReader, nil
 }

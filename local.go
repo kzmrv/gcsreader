@@ -81,6 +81,11 @@ func readFromLocalFile(filename string) io.Reader {
 	return bytes.NewReader(bts)
 }
 
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	klog.Infof("%s took %s", name, elapsed)
+}
+
 func handle(err error) {
 	if err == nil {
 		return
