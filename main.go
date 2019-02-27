@@ -22,7 +22,9 @@ func run() {
 	regex, _ := regexp.Compile(targetSubstring)
 
 	r, err := downloadAndDecompress(logPath)
-	handle(err)
+	if err != nil {
+		klog.Fatal(err)
+	}
 	parsed, _ := processLines(r, regex)
 
 	if len(parsed) == 0 {
@@ -68,7 +70,7 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 		}
 		isMatched, entry, err := processLine(line, regex)
 		if err != nil {
-			klog.Warningln(err, line) // TODO There is a problem that files finish with incompleted line
+			klog.Errorf("%s error parsing line %s", err, line) // TODO There is a problem that files finish with incompleted line
 		}
 		if isMatched && err == nil {
 			result = append(result, entry)

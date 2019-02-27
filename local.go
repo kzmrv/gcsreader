@@ -8,6 +8,8 @@ import (
 	"os"
 	"regexp"
 	"time"
+
+	"github.com/kubernetes/klog"
 )
 
 // These methods are only meant to be used for local machine benchmarking, so they may be poor optimized or violate good style
@@ -77,4 +79,11 @@ func readFromLocalFile(filename string) io.Reader {
 	bts, err := ioutil.ReadFile(filename)
 	handle(err)
 	return bytes.NewReader(bts)
+}
+
+func handle(err error) {
+	if err == nil {
+		return
+	}
+	klog.Fatal(err)
 }

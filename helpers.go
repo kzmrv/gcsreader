@@ -4,8 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/kubernetes/klog"
-
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"
 
@@ -38,11 +36,4 @@ func decompress(reader io.Reader) (io.Reader, error) {
 		return nil, err
 	}
 	return newTrackingReader(newReader, "decompress"), nil
-}
-
-func handle(err error) {
-	if err == nil {
-		return
-	}
-	klog.Fatal(err)
 }
