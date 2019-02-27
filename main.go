@@ -67,11 +67,11 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 			}
 			return nil, err
 		}
-		isMatched, entry, err := processLine(line, regex)
+		matched, entry, err := processLine(line, regex)
 		if err != nil {
 			klog.Errorf("%s error parsing line %s", err, line) // TODO There is a problem that files finish with incompleted line
 		}
-		if isMatched && err == nil {
+		if matched && err == nil {
 			result = append(result, entry)
 		}
 	}
