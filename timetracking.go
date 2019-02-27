@@ -2,9 +2,10 @@ package main
 
 import (
 	"io"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/kubernetes/klog"
 )
 
 var durations = newDurationMap()
@@ -32,7 +33,7 @@ func timeTrack(start time.Time, name string) {
 		return
 	}
 	elapsed := time.Since(start)
-	log.Printf("%s took %s", name, elapsed)
+	klog.Infof("%s took %s", name, elapsed)
 }
 
 func timeTrackIncremental(start time.Time, name string) {
@@ -62,6 +63,6 @@ func (mp *durationMap) increase(key string, value time.Duration) {
 
 func (mp *durationMap) printAll() {
 	for name, elapsed := range mp.m {
-		log.Printf("%s took %s", name, elapsed)
+		klog.Infof("%s took %s", name, elapsed)
 	}
 }

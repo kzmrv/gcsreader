@@ -2,12 +2,13 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/kubernetes/klog"
 )
 
 func main() {
@@ -25,10 +26,10 @@ func run() {
 	parsed, _ := processLines(r, regex)
 
 	if len(parsed) == 0 {
-		fmt.Printf("No lines found")
+		klog.Info("No lines found")
 	} else {
 		for _, line := range parsed {
-			fmt.Println(*line)
+			klog.Infoln(*line)
 		}
 	}
 }
@@ -67,7 +68,7 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 		}
 		isMatched, entry, err := processLine(line, regex)
 		if err != nil {
-			fmt.Println(err, line) // TODO There is a problem that files finish with incompleted line
+			klog.Warningln(err, line) // TODO There is a problem that files finish with incompleted line
 		}
 		if isMatched && err == nil {
 			result = append(result, entry)

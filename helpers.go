@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"io"
-	"log"
+
+	"github.com/kubernetes/klog"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"
@@ -43,5 +44,5 @@ func handle(err error) {
 	if err == nil {
 		return
 	}
-	log.Panic(err)
+	klog.Fatal(err)
 }
