@@ -12,7 +12,7 @@ import (
 	"github.com/kubernetes/klog"
 )
 
-// These methods are only meant to be used for local machine benchmarking, so they may be poor optimized or violate good style
+// These methods are only used for local machine benchmarking, so they may be poor optimized or violate good style
 const testFilePath = "c:\\temp\\kube-apiserver.log"
 
 func setupForLocal() {

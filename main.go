@@ -1,13 +1,15 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"io"
 	"os"
 	"regexp"
-	"strings"
 
+	"cloud.google.com/go/storage"
+	gzip "github.com/klauspost/pgzip"
 	"github.com/kubernetes/klog"
+	"google.golang.org/api/option"
 )
 
 func main() {
@@ -56,52 +58,6 @@ func setupFromConsole() (string, string) {
 	return logPath, targetSubstring
 }
 
-func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
-	var result []*logEntry
-	r := bufio.NewReader(reader)
-	for {
-		line, err := r.ReadBytes('\n')
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		matched, entry, err := processLine(line, regex)
-		if err != nil {
-			klog.Errorf("%s error parsing line %s", err, line) // TODO There is a problem that files finish with incompleted line
-		}
-		if matched && err == nil {
-			result = append(result, entry)
-		}
-	}
-	return result, nil
-}
-
-func processLine(line []byte, regex *regexp.Regexp) (bool, *logEntry, error) {
-	if !regex.Match(line) {
-		return false, nil, nil
-	}
-
-	parsed, err := parseLine(string(line))
-	return true, parsed, err
-}
-
-func parseLine(line string) (*logEntry, error) {
-	const startMarker = "ReceivedTimestamp\":\""
-	const endMarker = "\",\"stageTimestamp"
-	start := strings.Index(line, startMarker)
-	end := strings.Index(line, endMarker)
-	if start == -1 {
-		return &logEntry{}, &parseLineFailedError{line}
-	}
-	if end == -1 {
-		return &logEntry{}, &parseLineFailedError{line}
-	}
-	timestamp := line[(start + len(startMarker)):end]
-	return &logEntry{log: line, time: timestamp}, nil
-}
-
 func downloadAndDecompress(objectPath string) (io.Reader, error) {
 	reader, err := download(objectPath)
 	if err != nil {
@@ -115,15 +71,30 @@ func downloadAndDecompress(objectPath string) (io.Reader, error) {
 	return decompressed, nil
 }
 
-func (e *parseLineFailedError) Error() string {
-	return "Failed to parse line: " + e.line
+const bucketName = "kubernetes-jenkins"
+
+func download(objectPath string) (io.Reader, error) {
+	context := context.Background()
+	client, err := storage.NewClient(context, option.WithoutAuthentication())
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := client.Bucket(bucketName)
+
+	remoteFile := bucket.Object(objectPath).ReadCompressed(true)
+	reader, err := remoteFile.NewReader(context)
+	if err != nil {
+		return nil, err
+	}
+
+	return reader, err
 }
 
-type parseLineFailedError struct {
-	line string
-}
-
-type logEntry struct {
-	log  string
-	time string
+func decompress(reader io.Reader) (io.Reader, error) {
+	newReader, err := gzip.NewReader(reader)
+	if err != nil {
+		return nil, err
+	}
+	return newReader, nil
 }
