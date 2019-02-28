@@ -10,7 +10,7 @@ import (
 
 func Test_ShouldMatchSingleLine(t *testing.T) {
 	data, err := ioutil.ReadFile(filepath.Join("testdata", "kube-apiserver-cut.log"))
-	regex := regexp.MustCompile("0286b87c")
+	regex := regexp.MustCompile("\"auditID\":\"39aec93e-031b-4002-8c0a-4ddcd92e250b\"")
 	if err != nil {
 		t.Fatal(err)
 	}

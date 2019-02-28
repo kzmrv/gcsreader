@@ -58,8 +58,8 @@ func setupFromConsole() (string, string) {
 
 func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	var result []*logEntry
+	r := bufio.NewReader(reader)
 	for {
-		r := bufio.NewReader(reader)
 		line, err := r.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
