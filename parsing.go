@@ -5,6 +5,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/kubernetes/klog"
 )
@@ -54,7 +55,11 @@ func parseLine(line string) (*logEntry, error) {
 		return &logEntry{}, &parseLineFailedError{line}
 	}
 	timestamp := line[(start + len(startMarker)):end]
-	return &logEntry{log: line, time: timestamp}, nil
+	parsed, e := time.Parse(time.RFC3339Nano, timestamp)
+	if e != nil {
+		return nil, e
+	}
+	return &logEntry{log: line, time: parsed}, nil
 }
 
 func (e *parseLineFailedError) Error() string {
@@ -67,5 +72,5 @@ type parseLineFailedError struct {
 
 type logEntry struct {
 	log  string
-	time string
+	time time.Time
 }

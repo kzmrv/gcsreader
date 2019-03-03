@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 )
 
 func Test_MatchSingleLine(t *testing.T) {
@@ -33,8 +34,8 @@ func Test_ParseSingleLine(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const expectedTime = "2019-01-02T15:01:16.105964Z"
-	if line.time != expectedTime {
+	expectedTime := time.Unix(1546441276, 105964000) //"2019-01-02T15:01:16.105964Z"
+	if line.time.UTC() != expectedTime.UTC() {
 		t.Fatalf("Expected time %s received %s", expectedTime, line.time)
 	}
 
