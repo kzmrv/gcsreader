@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func Test_MatchSingleLine(t *testing.T) {
+func TestMatchSingleLine(t *testing.T) {
 	data, err := ioutil.ReadFile(filepath.Join("testdata", "kube-apiserver-cut.log"))
 	regex := regexp.MustCompile("\"auditID\":\"39aec93e-031b-4002-8c0a-4ddcd92e250b\"")
 	if err != nil {
@@ -25,7 +25,7 @@ func Test_MatchSingleLine(t *testing.T) {
 	}
 }
 
-func Test_ParseSingleLine(t *testing.T) {
+func TestParseSingleLine(t *testing.T) {
 	data, err := ioutil.ReadFile(filepath.Join("testdata", "kube-apiserver-cut.log"))
 	lineStr := string(data[:983])
 	t.Log(lineStr)
