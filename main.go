@@ -13,10 +13,6 @@ import (
 )
 
 func main() {
-	run()
-}
-
-func run() {
 	logPath, targetSubstring := setupFromConsole()
 	regex := regexp.MustCompile(targetSubstring)
 
