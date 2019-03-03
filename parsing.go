@@ -24,8 +24,9 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 		if err != nil {
 			// TODO There is a problem that files finish with incomplete line
 			klog.Errorf("%s error parsing line %s", err, line)
+			continue
 		}
-		if matched && err == nil {
+		if matched {
 			result = append(result, entry)
 		}
 	}
