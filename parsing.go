@@ -16,10 +16,12 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	for {
 		line, err := r.ReadBytes('\n')
 		if err != nil {
-			if err == io.EOF {
+			if err != io.EOF {
+				return nil, err
+			}
+			if len(line) == 0 {
 				break
 			}
-			return nil, err
 		}
 		matched, entry, err := processLine(line, regex)
 		if err != nil {
