@@ -8,8 +8,8 @@ import (
 
 	"cloud.google.com/go/storage"
 	gzip "github.com/klauspost/pgzip"
-	"github.com/kubernetes/klog"
 	"google.golang.org/api/option"
+	"k8s.io/klog"
 )
 
 func main() {

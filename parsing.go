@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubernetes/klog"
+	"k8s.io/klog"
 )
 
 func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {

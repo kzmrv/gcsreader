@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/kubernetes/klog"
+	"k8s.io/klog"
 )
 
 // These methods are only used for local machine benchmarking, so they may be poor optimized or violate good style
