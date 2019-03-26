@@ -48,8 +48,8 @@ func TestParseSingleLine(t *testing.T) {
 		t.Fatalf("Expected time %s received %s", expectedTime, line.time)
 	}
 
-	if line.log != line1 {
-		t.Fatalf("Expected log %s received %s", line1, line.log)
+	if *line.log != line1 {
+		t.Fatalf("Expected log %s received %s", line1, *line.log)
 	}
 }
 

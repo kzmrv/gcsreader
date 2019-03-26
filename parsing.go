@@ -77,7 +77,7 @@ func parseLine(line string) (*logEntry, error) {
 	if e != nil {
 		return nil, e
 	}
-	return &logEntry{log: line, time: parsed}, nil
+	return &logEntry{log: &line, time: &parsed}, nil
 }
 
 func (e *parseLineFailedError) Error() string {
@@ -89,6 +89,6 @@ type parseLineFailedError struct {
 }
 
 type logEntry struct {
-	log  string
-	time time.Time
+	log  *string
+	time *time.Time
 }

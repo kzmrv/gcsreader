@@ -19,35 +19,84 @@ package main
 import (
 	"context"
 	"io"
+	"net"
 	"os"
 	"regexp"
 
 	"cloud.google.com/go/storage"
+	ts "github.com/golang/protobuf/ptypes/timestamp"
 	gzip "github.com/klauspost/pgzip"
+	pb "github.com/kzmrv/mixer/proto"
 	"google.golang.org/api/option"
-	"k8s.io/klog"
+	"google.golang.org/grpc"
+	log "k8s.io/klog"
 )
 
+const (
+	port = ":17654"
+)
+
+type server struct{}
+
 func main() {
+	log.InitFlags(nil)
+
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	log.Infof("Listening on port: %v", port)
+	s := grpc.NewServer()
+	pb.RegisterWorkerServer(s, &server{})
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
+}
+
+func (s *server) DoWork(ctx context.Context, in *pb.Work) (*pb.WorkResult, error) {
+	log.Infof("Received: file %v, substring %v", in.File, in.TargetSubstring)
+
+	regex := regexp.MustCompile(in.TargetSubstring)
+
+	r, err := downloadAndDecompress(in.File)
+	if err != nil {
+		log.Fatal(err)
+	}
+	parsed, err := processLines(r, regex)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	lines := make([]*pb.LogLine, 2)
+	for i, p := range parsed {
+		lines[i] = &pb.LogLine{Entry: *p.log, Timestamp: &ts.Timestamp{Seconds: p.time.Unix(), Nanos: int32(p.time.Nanosecond())}}
+		lines[i+1] = &pb.LogLine{Entry: *p.log, Timestamp: &ts.Timestamp{Seconds: p.time.Unix(), Nanos: int32(p.time.Nanosecond())}}
+	}
+
+	return &pb.WorkResult{Logs: lines}, nil
+}
+
+func runDetached() error {
 	logPath, targetSubstring := setupFromConsole()
 	regex := regexp.MustCompile(targetSubstring)
 
 	r, err := downloadAndDecompress(logPath)
 	if err != nil {
-		klog.Fatal(err)
+		return err
 	}
 	parsed, err := processLines(r, regex)
 	if err != nil {
-		klog.Fatal(err)
+		return err
 	}
 
 	if len(parsed) == 0 {
-		klog.Info("No lines found")
+		log.Info("No lines found")
 	} else {
 		for _, line := range parsed {
-			klog.Infoln(*line)
+			log.Infoln(*line)
 		}
 	}
+	return nil
 }
 
 const testLogPath = "logs/ci-kubernetes-e2e-gce-scale-performance/290/artifacts/gce-scale-cluster-master/kube-apiserver-audit.log-20190102-1546444805.gz"
