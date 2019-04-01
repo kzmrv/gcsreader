@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"time"
 
 	"cloud.google.com/go/storage"
 	ts "github.com/golang/protobuf/ptypes/timestamp"
@@ -54,6 +55,7 @@ func main() {
 }
 
 func (s *server) DoWork(ctx context.Context, in *pb.Work) (*pb.WorkResult, error) {
+	defer timeTrack(time.Now(), "Call duration")
 	log.Infof("Received: file %v, substring %v", in.File, in.TargetSubstring)
 
 	regex := regexp.MustCompile(in.TargetSubstring)
@@ -67,12 +69,12 @@ func (s *server) DoWork(ctx context.Context, in *pb.Work) (*pb.WorkResult, error
 		log.Fatal(err)
 	}
 
-	lines := make([]*pb.LogLine, 2)
+	lines := make([]*pb.LogLine, len(parsed))
 	for i, p := range parsed {
 		lines[i] = &pb.LogLine{Entry: *p.log, Timestamp: &ts.Timestamp{Seconds: p.time.Unix(), Nanos: int32(p.time.Nanosecond())}}
-		lines[i+1] = &pb.LogLine{Entry: *p.log, Timestamp: &ts.Timestamp{Seconds: p.time.Unix(), Nanos: int32(p.time.Nanosecond())}}
 	}
 
+	log.Infof("Finished with %v lines", len(lines))
 	return &pb.WorkResult{Logs: lines}, nil
 }
 
