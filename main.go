@@ -54,10 +54,9 @@ func main() {
 	}
 }
 
-func (s *server) DoWork(ctx context.Context, in *pb.Work) (*pb.WorkResult, error) {
+func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	defer timeTrack(time.Now(), "Call duration")
 	log.Infof("Received: file %v, substring %v", in.File, in.TargetSubstring)
-
 	regex := regexp.MustCompile(in.TargetSubstring)
 
 	r, err := downloadAndDecompress(in.File)
@@ -75,7 +74,13 @@ func (s *server) DoWork(ctx context.Context, in *pb.Work) (*pb.WorkResult, error
 	}
 
 	log.Infof("Finished with %v lines", len(lines))
-	return &pb.WorkResult{Logs: lines}, nil
+	for _, l := range lines {
+		err := srv.Send(&pb.WorkResult{LogLine: l})
+		if err != nil {
+			log.Errorf("Failed to send result with: %v", err)
+		}
+	}
+	return nil
 }
 
 func runDetached() error {
