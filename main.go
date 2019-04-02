@@ -83,49 +83,6 @@ func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	return nil
 }
 
-func runDetached() error {
-	logPath, targetSubstring := setupFromConsole()
-	regex := regexp.MustCompile(targetSubstring)
-
-	r, err := downloadAndDecompress(logPath)
-	if err != nil {
-		return err
-	}
-	parsed, err := processAllLines(r, regex)
-	if err != nil {
-		return err
-	}
-
-	if len(parsed) == 0 {
-		log.Info("No lines found")
-	} else {
-		for _, line := range parsed {
-			log.Infoln(*line)
-		}
-	}
-	return nil
-}
-
-const testLogPath = "logs/ci-kubernetes-e2e-gce-scale-performance/290/artifacts/gce-scale-cluster-master/kube-apiserver-audit.log-20190102-1546444805.gz"
-const testTargetSubstring = "\"auditID\":\"07ff64df-fcfe-4cdc-83a5-0c6a09237698\""
-
-func setupFromConsole() (string, string) {
-	var logPath, targetSubstring string
-	if len(os.Args) < 2 || os.Args[1] == "" {
-		logPath = testLogPath
-	} else {
-		logPath = os.Args[1]
-	}
-
-	if len(os.Args) < 3 || os.Args[2] == "" {
-		targetSubstring = testTargetSubstring
-	} else {
-		targetSubstring = os.Args[2]
-	}
-
-	return logPath, targetSubstring
-}
-
 func downloadAndDecompress(objectPath string) (io.Reader, error) {
 	reader, err := download(objectPath)
 	if err != nil {
