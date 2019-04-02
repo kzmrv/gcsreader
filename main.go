@@ -166,3 +166,8 @@ func decompress(reader io.Reader) (io.Reader, error) {
 	}
 	return newReader, nil
 }
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Infof("%s took %s", name, elapsed)
+}
