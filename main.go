@@ -20,7 +20,6 @@ import (
 	"context"
 	"io"
 	"net"
-	"os"
 	"regexp"
 	"time"
 
@@ -54,6 +53,8 @@ func main() {
 	}
 }
 
+const buffer = 100000
+
 func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	defer timeTrack(time.Now(), "Call duration")
 	log.Infof("Received: file %v, substring %v", in.File, in.TargetSubstring)
@@ -63,23 +64,30 @@ func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	parsed, err := processAllLines(r, regex)
-	if err != nil {
-		log.Fatal(err)
-	}
+	ch := make(chan *lineEntry, buffer)
+	go processLines(r, regex, ch)
 
-	lines := make([]*pb.LogLine, len(parsed))
-	for i, p := range parsed {
-		lines[i] = &pb.LogLine{Entry: *p.log, Timestamp: &ts.Timestamp{Seconds: p.time.Unix(), Nanos: int32(p.time.Nanosecond())}}
-	}
+	counter := 0
+	for {
+		line, hasMore := <-ch
+		if line.err == io.EOF || !hasMore {
+			break
+		}
+		if line.err != nil {
+			log.Errorf("Failed to parse line with error %v", line.err)
+			continue
+		}
+		entry := line.logEntry
+		pbLine := &pb.LogLine{Entry: *entry.log, Timestamp: &ts.Timestamp{Seconds: entry.time.Unix(), Nanos: int32(entry.time.Nanosecond())}}
+		counter++
 
-	log.Infof("Finished with %v lines", len(lines))
-	for _, l := range lines {
-		err := srv.Send(&pb.WorkResult{LogLine: l})
+		err := srv.Send(&pb.WorkResult{LogLine: pbLine})
 		if err != nil {
 			log.Errorf("Failed to send result with: %v", err)
 		}
 	}
+
+	log.Infof("Finished with %v lines", counter)
 	return nil
 }
 

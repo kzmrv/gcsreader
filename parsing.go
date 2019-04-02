@@ -26,55 +26,26 @@ import (
 	"k8s.io/klog"
 )
 
-func processAllLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
-	res := make([]*logEntry, 0)
-	ch := make(chan *logEntry, 100000)
-	err := processLines(reader, regex, ch)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		line, hasMore := <-ch
-		if !hasMore {
-			return res, nil
-		}
-		res = append(res, line)
-	}
-}
-
-func processLines(reader io.Reader, regex *regexp.Regexp, ch chan *logEntry) error {
+func processLines(reader io.Reader, regex *regexp.Regexp, ch chan *lineEntry) {
 	defer close(ch)
 	r := bufio.NewReader(reader)
 	for {
 		line, err := r.ReadBytes('\n')
 		if err != nil {
-			if err != io.EOF {
-				return err
-			}
-			if len(line) == 0 {
-				break
-			}
+			ch <- &lineEntry{err: err}
+			return
 		}
-		matched, entry, err := processLine(line, regex)
+		if !regex.Match(line) {
+			continue
+		}
+		entry, err := parseLine(string(line))
 		if err != nil {
 			// TODO There is a problem that files finish with incomplete line
 			klog.Errorf("%s error parsing line %s", err, line)
-			continue
+			return
 		}
-		if matched {
-			ch <- entry
-		}
+		ch <- &lineEntry{logEntry: entry}
 	}
-	return nil
-}
-
-func processLine(line []byte, regex *regexp.Regexp) (bool, *logEntry, error) {
-	if !regex.Match(line) {
-		return false, nil, nil
-	}
-
-	parsed, err := parseLine(string(line))
-	return true, parsed, err
 }
 
 func parseLine(line string) (*logEntry, error) {
@@ -102,6 +73,11 @@ func (e *parseLineFailedError) Error() string {
 
 type parseLineFailedError struct {
 	line string
+}
+
+type lineEntry struct {
+	logEntry *logEntry
+	err      error
 }
 
 type logEntry struct {

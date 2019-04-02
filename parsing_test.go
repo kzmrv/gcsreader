@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"io"
 	"regexp"
 	"strings"
 	"testing"
@@ -50,6 +51,19 @@ func TestParseSingleLine(t *testing.T) {
 
 	if *line.log != line1 {
 		t.Fatalf("Expected log %s received %s", line1, *line.log)
+	}
+}
+
+func processAllLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
+	res := make([]*logEntry, 0)
+	ch := make(chan *lineEntry, 100000)
+	go processLines(reader, regex, ch)
+	for {
+		line, hasMore := <-ch
+		if !hasMore {
+			return res, nil
+		}
+		res = append(res, line.logEntry)
 	}
 }
 
