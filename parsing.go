@@ -26,14 +26,30 @@ import (
 	"k8s.io/klog"
 )
 
-func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
-	var result []*logEntry
+func processAllLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
+	res := make([]*logEntry, 0)
+	ch := make(chan *logEntry, 100000)
+	err := processLines(reader, regex, ch)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		line, hasMore := <-ch
+		if !hasMore {
+			return res, nil
+		}
+		res = append(res, line)
+	}
+}
+
+func processLines(reader io.Reader, regex *regexp.Regexp, ch chan *logEntry) error {
+	defer close(ch)
 	r := bufio.NewReader(reader)
 	for {
 		line, err := r.ReadBytes('\n')
 		if err != nil {
 			if err != io.EOF {
-				return nil, err
+				return err
 			}
 			if len(line) == 0 {
 				break
@@ -46,10 +62,10 @@ func processLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 			continue
 		}
 		if matched {
-			result = append(result, entry)
+			ch <- entry
 		}
 	}
-	return result, nil
+	return nil
 }
 
 func processLine(line []byte, regex *regexp.Regexp) (bool, *logEntry, error) {

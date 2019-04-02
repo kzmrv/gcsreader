@@ -63,7 +63,7 @@ func testParse() {
 	defer timeTrack(time.Now(), "parse")
 	regex, _ := regexp.Compile(testTargetSubstring)
 	reader := bufio.NewReader(readFromLocalFile(testFilePath))
-	parsed, _ := processLines(reader, regex)
+	parsed, _ := processAllLines(reader, regex)
 	if len(parsed) == 0 {
 	}
 }

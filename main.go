@@ -63,7 +63,7 @@ func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	parsed, err := processLines(r, regex)
+	parsed, err := processAllLines(r, regex)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func runDetached() error {
 	if err != nil {
 		return err
 	}
-	parsed, err := processLines(r, regex)
+	parsed, err := processAllLines(r, regex)
 	if err != nil {
 		return err
 	}
