@@ -58,37 +58,58 @@ const buffer = 100000
 func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	defer timeTrack(time.Now(), "Call duration")
 	log.Infof("Received: file %v, substring %v", in.File, in.TargetSubstring)
-	regex := regexp.MustCompile(in.TargetSubstring)
 
 	r, err := downloadAndDecompress(in.File)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	ch := make(chan *lineEntry, buffer)
+	regex, err := regexp.Compile(in.TargetSubstring)
+	if err != nil {
+		return err
+	}
 	go processLines(r, regex, ch)
+	sendLines(ch, srv)
 
+	return nil
+}
+
+func sendLines(ch chan *lineEntry, srv pb.Worker_DoWorkServer) {
 	counter := 0
-	for {
-		line, hasMore := <-ch
-		if line.err == io.EOF || !hasMore {
-			break
-		}
-		if line.err != nil {
-			log.Errorf("Failed to parse line with error %v", line.err)
-			continue
-		}
-		entry := line.logEntry
-		pbLine := &pb.LogLine{Entry: *entry.log, Timestamp: &ts.Timestamp{Seconds: entry.time.Unix(), Nanos: int32(entry.time.Nanosecond())}}
-		counter++
+	const batchSize = 100
+	for hasMoreBatches := true; hasMoreBatches; {
+		batch := make([]*pb.LogLine, batchSize)
+		i := 0
+		for i < batchSize {
+			line, hasMore := <-ch
+			if line.err == io.EOF || !hasMore {
+				hasMoreBatches = false
+				break
+			}
+			if line.err != nil {
+				log.Errorf("Failed to parse line with error %v", line.err)
+				continue
+			}
 
-		err := srv.Send(&pb.WorkResult{LogLine: pbLine})
-		if err != nil {
-			log.Errorf("Failed to send result with: %v", err)
+			entry := line.logEntry
+			pbLine := &pb.LogLine{
+				Entry:     *entry.log,
+				Timestamp: &ts.Timestamp{Seconds: entry.time.Unix(), Nanos: int32(entry.time.Nanosecond())}}
+
+			batch[i] = pbLine
+			i++
+		}
+
+		if i != 0 {
+			err := srv.Send(&pb.WorkResult{LogLines: batch[:i]})
+			if err != nil {
+				log.Errorf("Failed to send result with: %v", err)
+			}
+			counter += i
 		}
 	}
 
 	log.Infof("Finished with %v lines", counter)
-	return nil
 }
 
 func downloadAndDecompress(objectPath string) (io.Reader, error) {
