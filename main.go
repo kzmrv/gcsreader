@@ -20,7 +20,10 @@ import (
 	"context"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -75,10 +78,10 @@ func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 }
 
 func sendLines(ch chan *lineEntry, srv pb.Worker_DoWorkServer) {
-	counter := 0
+	lineCounter := 0
 	const batchSize = 100
 	for hasMoreBatches := true; hasMoreBatches; {
-		batch := make([]*pb.LogLine, batchSize)
+		batches := make([]*pb.LogLine, batchSize)
 		i := 0
 		for i < batchSize {
 			line, hasMore := <-ch
@@ -96,23 +99,24 @@ func sendLines(ch chan *lineEntry, srv pb.Worker_DoWorkServer) {
 				Entry:     *entry.log,
 				Timestamp: &ts.Timestamp{Seconds: entry.time.Unix(), Nanos: int32(entry.time.Nanosecond())}}
 
-			batch[i] = pbLine
+			batches[i] = pbLine
 			i++
 		}
 
 		if i != 0 {
-			err := srv.Send(&pb.WorkResult{LogLines: batch[:i]})
+			err := srv.Send(&pb.WorkResult{LogLines: batches[:i]})
 			if err != nil {
 				log.Errorf("Failed to send result with: %v", err)
 			}
-			counter += i
+			lineCounter += i
 		}
 	}
 
-	log.Infof("Finished with %v lines", counter)
+	log.Infof("Finished with %v lines", lineCounter)
 }
 
 func downloadAndDecompress(objectPath string) (io.Reader, error) {
+	//return loadFromLocalFS(objectPath)
 	reader, err := download(objectPath)
 	if err != nil {
 		return nil, err
@@ -123,6 +127,14 @@ func downloadAndDecompress(objectPath string) (io.Reader, error) {
 		return nil, err
 	}
 	return decompressed, nil
+}
+
+func loadFromLocalFS(objectPath string) (io.Reader, error) {
+	const folder = "/Downloads/kubernetes-jenkins-310"
+	idx := strings.LastIndex(objectPath, "/") + 1
+	fileName := strings.TrimSuffix(objectPath[idx:], ".gz")
+	home, _ := os.UserHomeDir()
+	return os.Open(filepath.Join(home, folder, fileName))
 }
 
 const bucketName = "kubernetes-jenkins"
