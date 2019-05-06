@@ -38,56 +38,12 @@ import (
 )
 
 const (
-	port = ":17654"
+	port       = ":17654"
+	bucketName = "kubernetes-jenkins"
+	lineBuffer = 100000
 )
 
-type server struct{}
-
-func main() {
-	log.InitFlags(nil)
-
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
-	log.Infof("Listening on port: %v", port)
-	s := grpc.NewServer()
-	pb.RegisterWorkerServer(s, &server{})
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
-	}
-}
-
-const buffer = 100000
-
-func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
-	defer timeTrack(time.Now(), "Call duration")
-	log.Infof("Received: file %v, substring %v, since %v, until %v",
-		in.File, in.TargetSubstring, ptypes.TimestampString(in.Since), ptypes.TimestampString(in.Until))
-
-	r, err := downloadAndDecompress(in.File)
-	if err != nil {
-		return err
-	}
-	ch := make(chan *lineEntry, buffer)
-	regex, err := regexp.Compile(in.TargetSubstring)
-	if err != nil {
-		return err
-	}
-
-	since, _ := ptypes.Timestamp(in.Since)
-	until, _ := ptypes.Timestamp(in.Until)
-	filters := &lineFilter{
-		regex: regex,
-		since: since,
-		until: until,
-	}
-
-	go processLines(r, ch, filters)
-	sendLines(ch, srv)
-
-	return nil
-}
+type serverType struct{}
 
 type lineFilter struct {
 	regex *regexp.Regexp
@@ -95,7 +51,52 @@ type lineFilter struct {
 	until time.Time
 }
 
-func sendLines(ch chan *lineEntry, srv pb.Worker_DoWorkServer) {
+func main() {
+	log.InitFlags(nil)
+
+	listener, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	log.Infof("Listening on port: %v", port)
+	server := grpc.NewServer()
+	pb.RegisterWorkerServer(server, &serverType{})
+	err = server.Serve(listener)
+	if err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
+}
+
+func (*serverType) DoWork(request *pb.Work, server pb.Worker_DoWorkServer) error {
+	defer timeTrack(time.Now(), "Call duration")
+	log.Infof("Received: file %v, substring %v, since %v, until %v",
+		request.File, request.TargetSubstring, ptypes.TimestampString(request.Since), ptypes.TimestampString(request.Until))
+
+	reader, err := downloadAndDecompress(request.File)
+	if err != nil {
+		return err
+	}
+	lineChannel := make(chan *lineEntry, lineBuffer)
+	regex, err := regexp.Compile(request.TargetSubstring)
+	if err != nil {
+		return err
+	}
+
+	since, _ := ptypes.Timestamp(request.Since)
+	until, _ := ptypes.Timestamp(request.Until)
+	filters := &lineFilter{
+		regex: regex,
+		since: since,
+		until: until,
+	}
+
+	go getMatchingLines(reader, lineChannel, filters)
+	batchAndSend(lineChannel, server)
+
+	return nil
+}
+
+func batchAndSend(ch chan *lineEntry, server pb.Worker_DoWorkServer) {
 	lineCounter := 0
 	const batchSize = 100
 	for hasMoreBatches := true; hasMoreBatches; {
@@ -122,7 +123,7 @@ func sendLines(ch chan *lineEntry, srv pb.Worker_DoWorkServer) {
 		}
 
 		if i != 0 {
-			err := srv.Send(&pb.WorkResult{LogLines: batches[:i]})
+			err := server.Send(&pb.WorkResult{LogLines: batches[:i]})
 			if err != nil {
 				log.Errorf("Failed to send result with: %v", err)
 			}
@@ -146,16 +147,6 @@ func downloadAndDecompress(objectPath string) (io.Reader, error) {
 	}
 	return decompressed, nil
 }
-
-func loadFromLocalFS(objectPath string) (io.Reader, error) {
-	const folder = "/Downloads/kubernetes-jenkins-310"
-	idx := strings.LastIndex(objectPath, "/") + 1
-	fileName := strings.TrimSuffix(objectPath[idx:], ".gz")
-	home, _ := os.UserHomeDir()
-	return os.Open(filepath.Join(home, folder, fileName))
-}
-
-const bucketName = "kubernetes-jenkins"
 
 func download(objectPath string) (io.Reader, error) {
 	context := context.Background()
@@ -186,4 +177,13 @@ func decompress(reader io.Reader) (io.Reader, error) {
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
 	log.Infof("%s took %s", name, elapsed)
+}
+
+// for testing purposes
+func loadFromLocalFS(objectPath string) (io.Reader, error) {
+	const folder = "/Downloads/kubernetes-jenkins-310"
+	idx := strings.LastIndex(objectPath, "/") + 1
+	fileName := strings.TrimSuffix(objectPath[idx:], ".gz")
+	home, _ := os.UserHomeDir()
+	return os.Open(filepath.Join(home, folder, fileName))
 }

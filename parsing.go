@@ -25,7 +25,7 @@ import (
 	"k8s.io/klog"
 )
 
-func processLines(reader io.Reader, ch chan *lineEntry, filters *lineFilter) {
+func getMatchingLines(reader io.Reader, ch chan *lineEntry, filters *lineFilter) {
 	defer close(ch)
 	r := bufio.NewReader(reader)
 	for {

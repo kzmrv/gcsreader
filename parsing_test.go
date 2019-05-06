@@ -57,7 +57,7 @@ func TestParseSingleLine(t *testing.T) {
 func processAllLines(reader io.Reader, regex *regexp.Regexp) ([]*logEntry, error) {
 	res := make([]*logEntry, 0)
 	ch := make(chan *lineEntry, 100000)
-	go processLines(reader, ch, &lineFilter{regex: regex})
+	go getMatchingLines(reader, ch, &lineFilter{regex: regex})
 	for {
 		line, hasMore := <-ch
 		if !hasMore {
