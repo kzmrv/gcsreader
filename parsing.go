@@ -19,14 +19,13 @@ package main
 import (
 	"bufio"
 	"io"
-	"regexp"
 	"strings"
 	"time"
 
 	"k8s.io/klog"
 )
 
-func processLines(reader io.Reader, regex *regexp.Regexp, ch chan *lineEntry) {
+func processLines(reader io.Reader, ch chan *lineEntry, filters *lineFilter) {
 	defer close(ch)
 	r := bufio.NewReader(reader)
 	for {
@@ -35,7 +34,7 @@ func processLines(reader io.Reader, regex *regexp.Regexp, ch chan *lineEntry) {
 			ch <- &lineEntry{err: err}
 			return
 		}
-		if !regex.Match(line) {
+		if !filters.regex.Match(line) {
 			continue
 		}
 		entry, err := parseLine(string(line))
@@ -44,7 +43,10 @@ func processLines(reader io.Reader, regex *regexp.Regexp, ch chan *lineEntry) {
 			klog.Errorf("%s error parsing line %s", err, line)
 			return
 		}
-		ch <- &lineEntry{logEntry: entry}
+		if (filters.since.IsZero() || filters.since.Before(*entry.time)) &&
+			(filters.until.IsZero() || filters.until.After(*entry.time)) {
+			ch <- &lineEntry{logEntry: entry}
+		}
 	}
 }
 

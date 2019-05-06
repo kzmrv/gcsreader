@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"cloud.google.com/go/storage"
 	ts "github.com/golang/protobuf/ptypes/timestamp"
 	gzip "github.com/klauspost/pgzip"
@@ -60,7 +62,8 @@ const buffer = 100000
 
 func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	defer timeTrack(time.Now(), "Call duration")
-	log.Infof("Received: file %v, substring %v", in.File, in.TargetSubstring)
+	log.Infof("Received: file %v, substring %v, since %v, until %v",
+		in.File, in.TargetSubstring, ptypes.TimestampString(in.Since), ptypes.TimestampString(in.Until))
 
 	r, err := downloadAndDecompress(in.File)
 	if err != nil {
@@ -71,10 +74,25 @@ func (*server) DoWork(in *pb.Work, srv pb.Worker_DoWorkServer) error {
 	if err != nil {
 		return err
 	}
-	go processLines(r, regex, ch)
+
+	since, _ := ptypes.Timestamp(in.Since)
+	until, _ := ptypes.Timestamp(in.Until)
+	filters := &lineFilter{
+		regex: regex,
+		since: since,
+		until: until,
+	}
+
+	go processLines(r, ch, filters)
 	sendLines(ch, srv)
 
 	return nil
+}
+
+type lineFilter struct {
+	regex *regexp.Regexp
+	since time.Time
+	until time.Time
 }
 
 func sendLines(ch chan *lineEntry, srv pb.Worker_DoWorkServer) {
